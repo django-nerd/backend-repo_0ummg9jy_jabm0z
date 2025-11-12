@@ -1,48 +1,102 @@
 """
-Database Schemas
+Database Schemas for Sports Analytics SaaS
 
-Define your MongoDB collection schemas here using Pydantic models.
-These schemas are used for data validation in your application.
-
-Each Pydantic model represents a collection in your database.
-Model name is converted to lowercase for the collection name:
-- User -> "user" collection
-- Product -> "product" collection
-- BlogPost -> "blogs" collection
+Each Pydantic model corresponds to a MongoDB collection. Collection name is the lowercase of the class name.
 """
 
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, List, Literal
+from datetime import datetime
 
-# Example schemas (replace with your own):
-
+# Users
 class User(BaseModel):
-    """
-    Users collection schema
-    Collection name: "user" (lowercase of class name)
-    """
     name: str = Field(..., description="Full name")
     email: str = Field(..., description="Email address")
-    address: str = Field(..., description="Address")
-    age: Optional[int] = Field(None, ge=0, le=120, description="Age in years")
-    is_active: bool = Field(True, description="Whether user is active")
+    provider: Optional[Literal["email", "google", "facebook", "apple"]] = Field(
+        "email", description="Auth provider"
+    )
+    photo_url: Optional[str] = Field(None, description="Avatar URL")
+    locale: Optional[str] = Field("en", description="Language preference")
+    currency: Optional[str] = Field("USD", description="Currency preference")
+    plan: Optional[Literal["free", "starter", "pro"]] = Field("free")
+    is_active: bool = Field(True)
 
-class Product(BaseModel):
-    """
-    Products collection schema
-    Collection name: "product" (lowercase of class name)
-    """
-    title: str = Field(..., description="Product title")
-    description: Optional[str] = Field(None, description="Product description")
-    price: float = Field(..., ge=0, description="Price in dollars")
-    category: str = Field(..., description="Product category")
-    in_stock: bool = Field(True, description="Whether product is in stock")
+# Predictions
+class Prediction(BaseModel):
+    league: str = Field(..., description="League name, e.g., Premier League")
+    country: Optional[str] = Field(None, description="Country/Region")
+    match_id: str = Field(..., description="Unique match identifier")
+    home_team: str
+    away_team: str
+    kickoff_iso: str = Field(..., description="UTC kickoff time ISO8601")
+    pick: Literal[
+        "home_win",
+        "away_win",
+        "draw",
+        "over_2_5",
+        "under_2_5",
+        "both_teams_score",
+        "home_asian",
+        "away_asian",
+    ]
+    odds: float = Field(..., gt=1.0, description="Decimal odds")
+    confidence: int = Field(..., ge=1, le=100)
+    risk: Literal["low", "medium", "high"] = Field("medium")
+    xg_home: Optional[float] = Field(None, ge=0)
+    xg_away: Optional[float] = Field(None, ge=0)
+    injuries: Optional[str] = None
+    weather: Optional[str] = None
+    head_to_head: Optional[str] = None
+    recent_form: Optional[str] = None
+    analysis: Optional[str] = None
+    tags: Optional[List[str]] = []
+    status: Literal["pending", "won", "lost", "void"] = "pending"
 
-# Add your own schemas here:
-# --------------------------------------------------
+# Blog posts
+class Blog(BaseModel):
+    slug: str = Field(..., description="URL slug")
+    title: str
+    excerpt: Optional[str] = None
+    content: str
+    cover_image: Optional[str] = None
+    author: Optional[str] = "Analyst Team"
+    published_at: Optional[str] = None
+    language: Optional[str] = Field("en", description="en/es/fr/pt")
+    tags: Optional[List[str]] = []
 
-# Note: The Flames database viewer will automatically:
-# 1. Read these schemas from GET /schema endpoint
-# 2. Use them for document validation when creating/editing
-# 3. Handle all database operations (CRUD) directly
-# 4. You don't need to create any database endpoints!
+# Testimonials / Results
+class Testimonial(BaseModel):
+    name: str
+    location: Optional[str] = None
+    message: str
+    slip_image: Optional[str] = Field(None, description="URL to verified slip image")
+    verified: bool = True
+
+# Newsletter subscriptions
+class Subscription(BaseModel):
+    email: str
+    source: Optional[str] = "landing"
+    locale: Optional[str] = "en"
+
+# Support tickets / contact
+class Contact(BaseModel):
+    name: str
+    email: str
+    message: str
+    topic: Optional[str] = "general"
+
+# Plans (reference; pricing may be static via endpoint)
+class Plan(BaseModel):
+    code: Literal["free", "starter", "pro"]
+    name: str
+    monthly_price: float
+    yearly_price: float
+    currency: str = "USD"
+    features: List[str] = []
+
+# Legal pages
+class Legal(BaseModel):
+    slug: Literal["terms", "privacy", "responsible-betting"]
+    title: str
+    content: str
+    updated_at: Optional[datetime] = None
